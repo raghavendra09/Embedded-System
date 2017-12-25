@@ -1,0 +1,370 @@
+#include<lpc214x.h>
+#include<string.h>
+
+#define CZ 0x1A	
+#define CR 0x0D	
+#define LF 0x0A
+#define DQ 0x22	
+													
+				
+
+
+#define BUZZER_ON() IO0SET
+#define BUZZER_OFF() IO0CLR
+#define COMMAND_PORT() 
+#define EN_LOW() IO1CLR
+#define OBS (0x00080000)
+
+#define alc (0x00800000) 
+#define fir (0x00200000) 
+#define pir (0x00000020)  
+#define level1 (0x00010000)
+#define level2 (0x00020000)
+#define level3 (0x00040000)
+
+#define DATA_PORT() IO1SET
+#define EN_HI() IO1SET
+#define FAN_ON() IO0SET	
+
+//Macro Functions to turn ON Buzzer
+#define FAN_OFF() IO0CLR
+#define MOTOR_ON()  IO0SET
+#define MOTOR_ON1() IO0SET
+#define MOTOR_ON2() IO0SET
+#define MOTOR_ON3() IO0SET
+#define MOTOR_OFF()  IO0CLR
+#define MOTOR_OFF1() IO0CLR
+#define MOTOR_OFF2() IO0CLR
+#define MOTOR_OFF3() IO0CLR
+	unsigned char b[80];
+	unsigned char si,sf;
+	unsigned char r,j1;
+	void send_sms(unsigned char *msg,unsigned char *num);
+	unsigned char strg1cmp(unsigned char [],unsigned char []);
+	void  UART1_SendStr(const unsigned char);     
+	void  UART1_SendByte(unsigned char data);       
+	void  UART0_SendStr(const unsigned char);     
+	void  UART0_SendByte(unsigned char data);       
+	void Delay(unsigned int);
+	void LCD_Command(unsigned int);        
+	void LCD_Data(unsigned int);           
+	void LCD_Init(void);
+	void conv(unsigned int );
+	void LCD_String(unsigned char *);
+	void Delay_Ticks(unsigned int);  
+	void Init_UART0(void);                
+	void Init_UART1(void);                  
+	char inp0(char _bit);
+	void clearrx(void);
+	unsigned char  receive( void );      
+	unsigned char Count=00;
+	unsigned int h1=0,h2=0;
+	unsigned char dat1='\0';
+	
+	void   isr (void) __irq
+	{
+	unsigned char ch;
+	if(0x00000080)
+	{
+	if(U1LSR)
+	{
+	ch=U1RBR;
+	b[i++];
+	}
+	b[i]='0';
+	VicVectAddr = 0x00000000;
+	}
+	}  
+	
+	int main(void)
+	{
+	PINSEL0 = 0x00050005;  
+	PINSEL1 = 0x00000000;
+	PINSEL2 = 0x00000000;		
+	Delay(100);
+	IO1DIR = 0x03FF0000;   
+	IO0DIR = 0x0000FC00; 
+	
+	LCD_Init();
+	Init_UART0();
+	Init_UART1();
+	U1IER=0x01;
+	VicIntEnClr = 0xffffffff;
+	VicIntSelect= 0x00000000;
+	VicVectCntl0 = 0x2017;
+	VicVectAddr0 = (unsigned long );
+	VicIntEnable  = 0x80;
+	LCD_Command(0x01);  
+	Delay(100);
+	IO0CLR=0x00000010;
+	LCD_Command(0x80);     
+	LCD_String("WIRELESS BASED  ");
+	LCD_Command(0xC0);     
+	LCD_String("INDUSTRIAL APPLICATIONS");
+	Delay(200);
+	LCD_Command(0x01); 
+	UART0_SendStr("\n\r WSN based Mobile Control Room"); 
+	UART0_SendStr("\n\r Environment for Industrial Applications\n\r");
+	LCD_Command(0x80);     
+	UART1_SendStr("AT");
+	UART1_SendByte(CR);
+	UART1_SendByte(LF);
+	UART1_SendStr("AT+IPR=9600");
+	UART1_SendByte(CR);
+	UART1_SendByte(LF); 
+	Delay_Ticks(100);
+	LCD_Command(0x80);     
+	send_sms("MOVING......... ","+919490076150");
+	UART0_SendStr("\n\rMOVING........");
+	Delay(50000);
+
+    IO0SET=(1<<11);
+    IO0CLR=(1<<12);		
+    IO0SET=(1<<13);
+    IO0CLR=(1<<15);		
+    IO0CLR=(1<<14);	
+	while(1)
+	{
+	dat1=receive();
+	Delay_Ticks(50);
+	si=inp0(4);
+	LCD_Command(0x80);     
+
+  if((IO0PIN)	==0) 
+{
+	    LCD_Command(0x80);    
+	send_sms ("SMOKE DETECTED  ","+919490076150");
+LCD_String  ("SMOKE  DETECTED   ");
+	    UART0_SendStr("\n\r SMOKE DETECTED   FAN ON \n\r");  
+			BUZZER_ON();
+			IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+		  Delay(1000);
+       BUZZER_OFF();
+
+}
+else if(OBS== 0x00400000)	
+{
+	    LCD_Command(0x80);   
+	send_sms("OBSTACLE DETECTED PATH CHANGE 
+","+919490076150");
+		  LCD_String("OBSTACLE DETECTED ");
+	    UART0_SendStr("\n\r OBSTACLE DETECTED  PATH CHANGE \n\r"); 
+	    LCD_Command(0xC0); 
+			LCD_String("   PATH CHANGE...... ");
+			BUZZER_ON();
+			IO0CLR = (1<<11);
+	    IO0CLR = (1<<12);
+	    IO0SET = (1<<13);
+	    IO0CLR = (1<<14);
+		  Delay(1000);
+      BUZZER_OFF();
+}
+ else if((IO0PIN &0x00080000)	==0) 
+{
+	    LCD_Command(0x80);     //Cursor on first line
+			send_sms("FIRE DETECTED  ","+919490076150");
+LCD_String("FIRE DETECTED   ");
+	    UART0_SendStr("\n\r FIRE DETECTED FAN_ ON\n\r"); 
+			BUZZER_ON();
+			IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+	    LCD_Command(0xC0);
+	    LCD_String("FAN ON  ");
+	    FAN_ON();
+		  Delay(1000);
+      BUZZER_OFF();
+	   FAN_OFF();
+}
+ else if(pir ==0x00000020)
+{
+	    LCD_Command(0x80);   
+			send_sms("PERSON DETECTED  ","+919490076150");
+      LCD_String("PERSON DETECTED   ");
+	    UART0_SendStr("\n\r PERSON DETECTED  BUZZER ON \n\r"); 
+			BUZZER_ON();
+			IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+		  Delay(1000);
+      BUZZER_OFF();
+}
+ else if((IO0PIN & 0x00010000)	==0) 
+{
+	    LCD_Command(0x80);     
+			send_sms("LEVEL1 25%  ","+919490076150");
+	    UART0_SendStr("\n\r LEVEL1 25%   \n\r"); 
+      LCD_String("LEVEL1 25%  ");
+      IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+}
+else if((IO0PIN & 0x00020000)	==0) 
+{
+	    LCD_Command(0x80);    
+			send_sms("LEVEL2 50% ","+919490076150");
+	    UART0_SendStr("\n\r LEVEL2 50%   \n\r");
+      LCD_String("LEVEL2 50%   ");
+		  IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+
+}
+else if((IO0PIN & 0x00040000)	==0) 
+{
+	    LCD_Command(0x80);    
+			send_sms("LEVEL3 75% ","+919490076150");
+	    UART0_SendStr("\n\r LEVEL3  75%   \n\r");
+			LCD_String("LEVEL3 75%   ");
+			BUZZER_ON();
+			IO0CLR = (1<<11);
+			IO0CLR = (1<<12);
+	    IO0CLR = (1<<13);
+	    IO0CLR = (1<<14);
+		  Delay(1000);
+       BUZZER_OFF();
+}
+else 
+	
+{
+    LCD_Command(0x80);    
+		LCD_String("  MONITORING...>>> ");
+    UART0_SendStr("\n\rMONITORING .... \n");	
+		LCD_Command(0xC0);     
+		LCD_String("                   ");
+    IO0CLR=(1<<15);		
+    IO0SET=(1<<11);
+    IO0CLR=(1<<12);		
+    IO0SET=(1<<13);
+    IO0CLR=(1<<14);	
+}
+	}
+	}	
+	
+void Delay(unsigned int j4)
+	{ 
+	unsigned int  i1,i2;
+	for(i1=0;i1<j4;i1++)
+	for(i2=0; i2<6000; i2++);
+	}
+	
+	void LCD_Command(unsigned int data)              
+	{
+	unsigned int temp=0;
+	EN_LOW();
+	COMMAND_PORT();  
+	temp=data;
+	temp = (temp) << 18; 
+	IO1SET= temp;
+	EN_HI();
+	EN_LOW();
+	IO1CLR=temp ;
+	Delay(10);
+	}
+	
+	void LCD_Data(unsigned int data)           
+	{
+	unsigned int temp=0;
+	EN_LOW();
+	DATA_PORT();     
+	temp=data;
+	temp= (temp) << 18;
+	IO1SET= temp;
+	EN_HI();
+	EN_LOW();
+	IO1CLR= temp ;
+	Delay(1);
+	}
+	
+	void LCD_Init()
+	{
+	LCD_Command(0x30);     
+	}
+	
+	void LCD_String(unsigned char *data)
+	{
+	while(*data)
+	{
+	LCD_Data(*data);
+	data++;
+	}
+	} 
+	
+	void  Delay_Ticks(unsigned int Delay)  
+	{ 
+	unsigned int mo;
+	for(; Delay>0; Delay--)
+	for(mo=0; mo<50000; mo++);
+	}
+	
+	void  Init_UART0(void)                    
+	{ 
+	unsigned int Baud16;
+	U0LCR = 0x83;                    
+	Baud16=(Fpclk / 16) / 9600; 
+	U0DLM = Baud16 / 256;                           
+	U0DLL = Baud16 % 256;                       
+	U0LCR = 0x03;
+	}
+	
+	void  Init_UART1(void)                    
+	{ 
+	unsigned int Baud16;
+	U1LCR = 0x83;                    
+	Baud16 = (Fpclk / 16) / 9600; 
+	U1DLM = Baud16 / 256;                           
+	U1DLL = Baud16 % 256;                       
+	U1LCR = 0x03;
+	}
+	
+	void  UART0_SendByte(unsigned char data)       
+	{ 
+	U0THR = data;                   
+	while(!(U0LSR&0x20));       
+	}
+	
+	void  UART0_SendStr(const unsigned char *str)     	{ 
+	while(1)
+	{ 
+	if( *str == '\0' ) break;
+	UART0_SendByte(*str++);       
+	}
+	}
+	
+	void  UART1_SendByte(unsigned char dataso)       
+	{ 
+	U1THR = dataso;                   
+	while(!(U1LSR&0x20));
+	}
+	void send_sms(unsigned char *msg,unsigned char *num)
+	{
+	UART1_SendStr("AT");
+	UART1_SendByte(CR);	UART1_SendByte(LF);
+	Delay_Ticks(20);
+	UART1_SendStr("AT+CMGF=1");
+	UART1_SendByte(CR);	UART1_SendByte(LF);
+	Delay_Ticks(20);
+	UART1_SendStr("AT+CMGS=");UART1_SendByte(DQ);UART1_SendStr(num);UART1_SendByte(DQ);
+	Delay_Ticks(20);
+	UART1_SendByte(CR);	UART1_SendByte(LF);
+	Delay_Ticks(20);
+	UART1_SendStr(msg);
+	UART1_SendByte(CR);	UART1_SendByte(LF);
+	Delay_Ticks(20);
+	UART1_SendByte(CZ);
+	Delay_Ticks(20);
+
+	void clearrx(void)
+	{
+	for(i=0;i<=75;i++)
+	b[i]='\0';
+	i=0;
+	}			
+
